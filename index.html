@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hangman — Months Edition</title>
+
+  <!--
+    ============================================================
+    HANGMAN GAME — Months Edition
+    NEW: Registration · Login · Per-Player Stats
+    For First Year Students
+
+    HOW PLAYER IDENTITY WORKS:
+    - All registered players are stored in localStorage under
+      the key "hangman_users"  (an object/dictionary)
+    - Each player has their own stats saved separately
+    - When you log in, your stats are loaded automatically
+    - When you log out, stats are saved and you return to login
+    ============================================================
+  -->
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=VT323&display=swap');
+
+    /* ── CSS VARIABLES ──────────────────────────────────────── */
+    :root {
+      --bg:      #0a0a0f;
+      --paper:   #13131c;
+      --card2:   #1a1a28;
+      --accent:  #7eb8f7;
+      --gold:    #e8c87a;
+      --red:     #c0392b;
+      --green:   #27ae60;
+      --purple:  #9b59b6;
+      --text:    #dde4f0;
+      --muted:   #555e78;
+      --border:  #252535;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Special Elite', cursive;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+    }
+
+    /* ════════════════════════════════════════════════
+       AUTH PAGES  (Login & Register)
+    ════════════════════════════════════════════════ */
+
+    /* Full-screen auth wrapper — shown before login */
+    #auth-screen {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .auth-logo {
+      font-family: 'VT323', monospace;
+      font-size: 3.8rem;
+      color: var(--accent);
+      letter-spacing: 8px;
+      text-align: center;
+    }
+
+    .auth-sub {
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: -10px;
+    }
+
+    /* Tab switcher between Login and Register */
+    .auth-tabs {
+      display: flex;
+      width: 100%;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'Special Elite', cursive;
+      font-size: 0.9rem;
+      padding: 9px;
+      border-radius: 7px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .auth-tab.active { background: var(--accent); color: #0a0a0f; }
+
+    /* The auth card that holds form fields */
+    .auth-card {
+      width: 100%;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .auth-card h2 {
+      font-family: 'VT323', monospace;
+      font-size: 1.8rem;
+      color: var(--accent);
+      letter-spacing: 3px;
+    }
+
+    /* Form field group: label + input */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 0.72rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    /*
+     * All text/password inputs share this style.
+     * 'outline: none' removes the default browser blue ring.
+     * We replace it with a custom border-color change on focus.
+     */
+    .field-input {
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Special Elite', cursive;
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-input:focus { border-color: var(--accent); }
+    .field-input::placeholder { color: var(--muted); font-size: 0.82rem; }
+
+    /* Error message shown under a field when validation fails */
+    .field-error {
+      font-size: 0.74rem;
+      color: var(--red);
+      min-height: 1em;
+      letter-spacing: 0.5px;
+    }
+
+    /* Primary submit button */
+    .auth-btn {
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Special Elite', cursive;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .auth-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* Small "switch to other page" link */
+    .auth-switch {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .auth-switch span {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Password strength bar (Register page only) */
+    .strength-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+    .strength-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .strength-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .strength-label {
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* ════════════════════════════════════════════════
+       MAIN APP (visible after login)
+    ════════════════════════════════════════════════ */
+
+    /* Hidden by default until player logs in */
+    #app-screen { display: none; width: 100%; flex-direction: column; align-items: center; }
+    #app-screen.visible { display: flex; }
+
+    /* ── NAV BAR ──────────────────────────────────── */
+    .nav-wrap {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    /* Top strip: player info + logout */
+    .player-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+    }
+
+    .player-info { display: flex; align-items: center; gap: 10px; }
+
+    /* Coloured circle with player's initial */
+    .player-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0a0a0f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .player-name-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .player-name-text strong {
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .player-name-text small {
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* Logout button in nav strip */
+    #logout-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Special Elite', cursive;
+      font-size: 0.78rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    #logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* Page tab nav */
+    .nav {
+      display: flex;
+      gap: 6px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 5px;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'Special Elite', cursive;
+      font-size: 0.9rem;
+      padding: 8px 22px;
+      border-radius: 7px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .nav-btn.active { background: var(--accent); color: #0a0a0f; }
+
+    /* ── PAGES ────────────────────────────────────── */
+    .page { display: none; width: 100%; max-width: 580px; }
+    .page.active { display: flex; flex-direction: column; gap: 18px; }
+
+    /* ── GAME TITLE ───────────────────────────────── */
+    h1 {
+      font-family: 'VT323', monospace;
+      font-size: 3.2rem;
+      color: var(--accent);
+      letter-spacing: 6px;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    /* ── GAME CARD ────────────────────────────────── */
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── GALLOWS ──────────────────────────────────── */
+    .gallows-wrap { display:flex; justify-content:center; }
+    svg#gallows { width:170px; height:170px; }
+    svg#gallows line, svg#gallows circle {
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linecap: round;
+      fill: none;
+      transition: opacity 0.35s;
+    }
+    .body-part { opacity: 0; }
+
+    /* ── HINT BOX ─────────────────────────────────── */
+    .hint-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+
+    .hint-text { font-size: 0.88rem; color: var(--gold); flex: 1; }
+    .hint-text .label { color: var(--muted); }
+
+    #hint-btn {
+      background: var(--gold);
+      color: #111;
+      border: none;
+      border-radius: 7px;
+      padding: 7px 16px;
+      font-family: 'Special Elite', cursive;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    #hint-btn:hover { opacity: 0.85; }
+    #hint-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── WORD DISPLAY ─────────────────────────────── */
+    #word-display { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+
+    .letter-box {
+      width: 34px;
+      text-align: center;
+      font-size: 1.55rem;
+      font-family: 'VT323', monospace;
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 2px;
+    }
+
+    /* ── STATUS ───────────────────────────────────── */
+    #status { text-align:center; font-size:0.95rem; color:var(--muted); min-height:1.3em; }
+
+    /* ── KEYBOARD ─────────────────────────────────── */
+    #keyboard { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+
+    .key {
+      width: 38px; height: 38px;
+      border: 1.5px solid var(--border);
+      background: #1e1e2e;
+      color: var(--text);
+      font-family: 'Special Elite', cursive;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .key:hover:not(:disabled) { background:#2a2a3e; transform:translateY(-2px); }
+    .key:disabled { cursor:default; }
+    .key.correct { background:var(--green); border-color:var(--green); color:#fff; }
+    .key.wrong   { background:var(--red);   border-color:var(--red);   color:#fff; }
+
+    /* ── BOTTOM ROW ───────────────────────────────── */
+    .bottom-row {
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:0.83rem; color:var(--muted);
+    }
+
+    #new-game-btn {
+      background: var(--accent); color: #0a0a0f;
+      border: none; border-radius: 7px;
+      padding: 8px 20px;
+      font-family: 'Special Elite', cursive; font-size: 0.88rem;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+
+    #new-game-btn:hover { opacity: 0.85; }
+
+    /* ── BANNER ───────────────────────────────────── */
+    #banner {
+      text-align:center; font-family:'VT323',monospace;
+      font-size:2rem; letter-spacing:3px; min-height:2.2rem;
+    }
+
+    #banner.win  { color: var(--green); }
+    #banner.lose { color: var(--red);   }
+
+    /* ════════════════════════════════════════════════
+       DASHBOARD
+    ════════════════════════════════════════════════ */
+
+    .dash-title {
+      font-family: 'VT323', monospace;
+      font-size: 2.2rem;
+      color: var(--accent);
+      letter-spacing: 4px;
+      text-align: center;
+    }
+
+    /* Profile card at top of dashboard */
+    .profile-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .profile-avatar-big {
+      width: 58px; height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .profile-details { display:flex; flex-direction:column; gap:3px; }
+
+    .profile-details strong {
+      font-size: 1.1rem;
+      color: var(--text);
+      letter-spacing: 1px;
+    }
+
+    .profile-details small {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .profile-badge {
+      margin-left: auto;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      text-align: center;
+    }
+
+    .profile-badge .pb-num {
+      font-family: 'VT323', monospace;
+      font-size: 1.6rem;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .profile-badge .pb-lbl {
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    /* 2-column stat cards */
+    .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .stat-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    .stat-label { font-size:0.72rem; letter-spacing:2px; color:var(--muted); margin-bottom:6px; }
+
+    .stat-value {
+      font-family: 'VT323', monospace;
+      font-size: 2.6rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-value.green { color: var(--green); }
+    .stat-value.red   { color: var(--red);   }
+    .stat-value.gold  { color: var(--gold);  }
+
+    /* Win-rate bar */
+    .bar-wrap {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .bar-label { font-size:0.75rem; letter-spacing:1.5px; color:var(--muted); margin-bottom:10px; }
+
+    .bar-track { background:#1e1e2e; border-radius:99px; height:14px; overflow:hidden; }
+
+    .bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.6s ease;
+    }
+
+    .bar-pct { font-family:'VT323',monospace; font-size:1.3rem; color:var(--accent); margin-top:6px; text-align:right; }
+
+    /* History table */
+    .history-wrap {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .history-wrap h3 { font-size:0.78rem; letter-spacing:2px; color:var(--muted); margin-bottom:12px; }
+
+    .history-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+
+    .history-table th {
+      text-align:left; color:var(--muted);
+      font-size:0.7rem; letter-spacing:1px;
+      padding-bottom:8px; border-bottom:1px solid var(--border);
+    }
+
+    .history-table td {
+      padding:7px 4px; border-bottom:1px solid #1c1c28; color:var(--text);
+    }
+
+    .history-table td:last-child { text-align:right; }
+
+    .badge { display:inline-block; border-radius:5px; padding:2px 8px; font-size:0.72rem; letter-spacing:1px; }
+    .badge.win  { background:#1a3a26; color:var(--green); }
+    .badge.lose { background:#3a1a1a; color:var(--red);   }
+
+    .empty-dash { text-align:center; color:var(--muted); font-size:0.9rem; padding:20px 0; }
+
+    /* Data panel */
+    .data-panel {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .data-panel h3 { font-size:0.78rem; letter-spacing:2px; color:var(--muted); }
+
+    .data-textarea {
+      width:100%; height:80px;
+      background:#0d0d18;
+      border:1px solid var(--border);
+      border-radius:8px;
+      color:var(--accent);
+      font-family:monospace; font-size:0.75rem;
+      padding:10px; resize:vertical;
+    }
+
+    .data-btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+    .data-btn {
+      border:none; border-radius:7px;
+      padding:8px 16px;
+      font-family:'Special Elite',cursive; font-size:0.82rem;
+      cursor:pointer; transition:opacity 0.2s; flex:1;
+    }
+
+    .data-btn:hover { opacity:0.85; }
+    .data-btn.save   { background:var(--green);  color:#fff; }
+    .data-btn.export { background:var(--accent);  color:#111; }
+    .data-btn.load   { background:var(--purple);  color:#fff; }
+    .data-btn.reset  { background:transparent; border:1px solid var(--red); color:var(--red); }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:30px; left:50%;
+      transform:translateX(-50%);
+      background:#222; border:1px solid var(--border);
+      color:var(--text); padding:10px 24px;
+      border-radius:8px; font-size:0.85rem;
+      opacity:0; transition:opacity 0.3s;
+      pointer-events:none; z-index:999;
+    }
+
+    #toast.show { opacity:1; }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════
+       TOAST NOTIFICATION (global)
+  ════════════════════════════════════════════════ -->
+  <div id="toast"></div>
+
+  <!-- ════════════════════════════════════════════════
+       AUTH SCREEN  (shown before login)
+       Contains two tabs: Login and Register
+  ════════════════════════════════════════════════ -->
+  <div id="auth-screen">
+
+    <div class="auth-logo">HANGMAN</div>
+    <p class="auth-sub">MONTHS EDITION · SIGN IN TO PLAY</p>
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')">🔑 Login</button>
+      <button class="auth-tab"        id="tab-register" onclick="switchAuthTab('register')">📝 Register</button>
+    </div>
+
+    <!-- ── LOGIN FORM ──────────────────────────────── -->
+    <div class="auth-card" id="form-login">
+      <h2>WELCOME BACK</h2>
+
+      <div class="field-group">
+        <label class="field-label">USERNAME</label>
+        <input class="field-input" id="login-username" type="text"
+               placeholder="Enter your username"
+               oninput="clearAuthError('login-err')"/>
+        <span class="field-error" id="login-err"></span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">PASSWORD</label>
+        <input class="field-input" id="login-password" type="password"
+               placeholder="Enter your password"
+               oninput="clearAuthError('login-err')"
+               onkeydown="if(event.key==='Enter') doLogin()"/>
+        <span class="field-error" id="login-err-pw"></span>
+      </div>
+
+      <button class="auth-btn" onclick="doLogin()">LOGIN →</button>
+
+      <p class="auth-switch">
+        No account? <span onclick="switchAuthTab('register')">Register here</span>
+      </p>
+    </div>
+
+    <!-- ── REGISTER FORM ───────────────────────────── -->
+    <div class="auth-card" id="form-register" style="display:none;">
+      <h2>CREATE ACCOUNT</h2>
+
+      <div class="field-group">
+        <label class="field-label">FULL NAME</label>
+        <input class="field-input" id="reg-name" type="text"
+               placeholder="e.g. Priya Sharma"
+               oninput="clearAuthError('reg-err-name')"/>
+        <span class="field-error" id="reg-err-name"></span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">USERNAME</label>
+        <input class="field-input" id="reg-username" type="text"
+               placeholder="Choose a username (no spaces)"
+               oninput="clearAuthError('reg-err-user')"/>
+        <span class="field-error" id="reg-err-user"></span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">PASSWORD</label>
+        <input class="field-input" id="reg-password" type="password"
+               placeholder="Min 6 characters"
+               oninput="checkPasswordStrength()"/>
+
+        <!-- Password strength bar — fills up as password gets stronger -->
+        <div class="strength-wrap">
+          <div class="strength-track">
+            <div class="strength-fill" id="strength-fill"></div>
+          </div>
+          <span class="strength-label" id="strength-label"></span>
+        </div>
+
+        <span class="field-error" id="reg-err-pw"></span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">CONFIRM PASSWORD</label>
+        <input class="field-input" id="reg-confirm" type="password"
+               placeholder="Repeat your password"
+               oninput="clearAuthError('reg-err-confirm')"
+               onkeydown="if(event.key==='Enter') doRegister()"/>
+        <span class="field-error" id="reg-err-confirm"></span>
+      </div>
+
+      <button class="auth-btn" onclick="doRegister()">CREATE ACCOUNT →</button>
+
+      <p class="auth-switch">
+        Already have an account? <span onclick="switchAuthTab('login')">Login here</span>
+      </p>
+    </div>
+
+  </div><!-- end #auth-screen -->
+
+
+  <!-- ════════════════════════════════════════════════
+       MAIN APP SCREEN (hidden until logged in)
+  ════════════════════════════════════════════════ -->
+  <div id="app-screen">
+
+    <!-- ── NAV WRAP ─────────────────────────────────── -->
+    <div class="nav-wrap">
+
+      <!-- Player identity strip -->
+      <div class="player-strip">
+        <div class="player-info">
+          <div class="player-avatar" id="nav-avatar">?</div>
+          <div class="player-name-text">
+            <strong id="nav-username">Player</strong>
+            <small id="nav-fullname">Full Name</small>
+          </div>
+        </div>
+        <button id="logout-btn" onclick="doLogout()">Logout</button>
+      </div>
+
+      <!-- Page tabs -->
+      <div class="nav">
+        <button class="nav-btn active" onclick="showPage('game')">🎮 Game</button>
+        <button class="nav-btn"       onclick="showPage('dash')">📊 Dashboard</button>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         GAME PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page active" id="page-game">
+
+      <div>
+        <h1>HANGMAN</h1>
+        <p class="subtitle">MONTHS EDITION · GUESS THE MONTH</p>
+      </div>
+
+      <div class="card">
+
+        <div class="gallows-wrap">
+          <svg id="gallows" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <line x1="20"  y1="190" x2="180" y2="190"/>
+            <line x1="60"  y1="190" x2="60"  y2="10"/>
+            <line x1="60"  y1="10"  x2="130" y2="10"/>
+            <line x1="130" y1="10"  x2="130" y2="40"/>
+            <circle class="body-part" id="bp-head" cx="130" cy="55" r="15"/>
+            <line   class="body-part" id="bp-body" x1="130" y1="70"  x2="130" y2="120"/>
+            <line   class="body-part" id="bp-larm" x1="130" y1="80"  x2="105" y2="105"/>
+            <line   class="body-part" id="bp-rarm" x1="130" y1="80"  x2="155" y2="105"/>
+            <line   class="body-part" id="bp-lleg" x1="130" y1="120" x2="105" y2="155"/>
+            <line   class="body-part" id="bp-rleg" x1="130" y1="120" x2="155" y2="155"/>
+          </svg>
+        </div>
+
+        <div class="hint-row">
+          <div class="hint-text">
+            <span class="label">HINT · </span>
+            <span id="hint-display">Press the hint button to get a clue →</span>
+          </div>
+          <button id="hint-btn" onclick="useHint()">💡 Hint</button>
+        </div>
+
+        <div id="banner"></div>
+        <div id="word-display"></div>
+        <div id="status">Loading...</div>
+        <div id="keyboard"></div>
+
+        <div class="bottom-row">
+          <span id="wrong-count">Wrong: 0 / 6</span>
+          <button id="new-game-btn" onclick="startGame()">New Game</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         DASHBOARD PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-dash">
+
+      <p class="dash-title">DASHBOARD</p>
+
+      <!-- Player profile card -->
+      <div class="profile-card">
+        <div class="profile-avatar-big" id="dash-avatar">?</div>
+        <div class="profile-details">
+          <strong id="dash-username">—</strong>
+          <small id="dash-fullname">—</small>
+          <small id="dash-joined">Joined: —</small>
+        </div>
+        <div class="profile-badge">
+          <div class="pb-num" id="dash-streak">0</div>
+          <div class="pb-lbl">WIN STREAK</div>
+        </div>
+      </div>
+
+      <!-- Stat grid -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">GAMES PLAYED</div>
+          <div class="stat-value" id="d-played">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">WIN RATE</div>
+          <div class="stat-value gold" id="d-winrate">0%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">WINS</div>
+          <div class="stat-value green" id="d-wins">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">LOSSES</div>
+          <div class="stat-value red" id="d-losses">0</div>
+        </div>
+      </div>
+
+      <!-- Win rate bar -->
+      <div class="bar-wrap">
+        <div class="bar-label">WIN RATE PROGRESS</div>
+        <div class="bar-track">
+          <div class="bar-fill" id="d-bar" style="width:0%"></div>
+        </div>
+        <div class="bar-pct" id="d-barpct">0%</div>
+      </div>
+
+      <!-- Recent games table -->
+      <div class="history-wrap">
+        <h3>RECENT GAMES (last 10)</h3>
+        <div id="history-body">
+          <p class="empty-dash">No games played yet. Go play! 🎮</p>
+        </div>
+      </div>
+
+      <!-- Save / Export / Load data panel -->
+      <div class="data-panel">
+        <h3>💾 SAVE · LOAD · EXPORT DATA</h3>
+        <textarea class="data-textarea" id="data-textarea"
+                  placeholder='Paste saved JSON here to load, or click Save first...'
+                  spellcheck="false"></textarea>
+        <div class="data-btn-row">
+          <button class="data-btn save"   onclick="saveData()">💾 Save</button>
+          <button class="data-btn export" onclick="exportData()">📥 Export .txt</button>
+          <button class="data-btn load"   onclick="loadData()">📂 Load</button>
+          <button class="data-btn reset"  onclick="resetStats()">🗑 Reset</button>
+        </div>
+        <p style="font-size:0.72rem;color:var(--muted);line-height:1.5;">
+          Stats auto-save after every game. Use <em>Export .txt</em> to keep a backup.
+          Paste a backup into the box and click <em>Load</em> to restore.
+        </p>
+      </div>
+
+    </div><!-- end page-dash -->
+
+  </div><!-- end #app-screen -->
+
+
+  <!-- ════════════════════════════════════════════════
+       JAVASCRIPT
+  ════════════════════════════════════════════════ -->
+  <script>
+
+    // ============================================================
+    //  WORD BANK — 12 months with hints
+    // ============================================================
+    const wordBank = [
+      { word:"january",   hint:" named after Janus, the Roman god with two faces." },
+      { word:"february",  hint:"Shortest month — 28 days normally, 29 in a leap year." },
+      { word:"march",     hint:" spring starts here. Named after Mars, god of war." },
+      { word:"april",     hint:" April Fools Day is on the 1st!" },
+      { word:"may",       hint:" flowers bloom, exams begin. Named after goddess Maia." },
+      { word:"june",      hint:" summer solstice. Named after goddess Juno." },
+      { word:"july",      hint:" named after Julius Caesar." },
+      { word:"august",    hint:" named after Emperor Augustus." },
+      { word:"september", hint:" school restarts. 'Septem' means 7 in Latin." },
+      { word:"october",   hint:" Halloween on the 31st! 'Octo' means 8." },
+      { word:"november",  hint:" Diwali often falls here. 'Novem' means 9." },
+      { word:"december",  hint:" last month of the year. 'Decem' means 10." }
+    ];
+
+    const bodyParts = ["bp-head","bp-body","bp-larm","bp-rarm","bp-lleg","bp-rleg"];
+    const MAX_WRONG = 6;
+
+    // ============================================================
+    //  STORAGE KEYS
+    //
+    //  We use two keys in localStorage:
+    //    "hangman_users"   → object where each KEY is a username
+    //                        and each VALUE is that player's data
+    //    "hangman_session" → the username of whoever is logged in
+    //
+    //  Example of hangman_users structure:
+    //  {
+    //    "priya": {
+    //      fullName: "Priya Sharma",
+    //      username: "priya",
+    //      password: "abc123",        ← plain text (OK for school project)
+    //      joinedDate: "09/04/2026",
+    //      stats: { played:5, wins:3, losses:2, streak:2, history:[] }
+    //    },
+    //    "rahul": { ... }
+    //  }
+    // ============================================================
+    const USERS_KEY   = 'hangman_users';
+    const SESSION_KEY = 'hangman_session';
+
+    // ============================================================
+    //  RUNTIME VARIABLES
+    // ============================================================
+    let currentUser  = null;   // full user object of logged-in player
+    let stats        = null;   // shortcut to currentUser.stats
+
+    // Game state
+    let currentEntry   = null;
+    let secretWord     = "";
+    let guessedLetters = [];
+    let wrongGuesses   = 0;
+    let hintUsed       = false;
+
+    // ============================================================
+    //  HELPER — get/save all users from localStorage
+    // ============================================================
+    function getAllUsers() {
+      const raw = localStorage.getItem(USERS_KEY);
+      return raw ? JSON.parse(raw) : {};   // return object or empty {}
+    }
+
+    function saveAllUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    // ============================================================
+    //  HELPER — fresh empty stats for a new player
+    // ============================================================
+    function freshStats() {
+      return { played:0, wins:0, losses:0, streak:0, bestStreak:0, history:[] };
+    }
+
+    // ============================================================
+    //  AUTH — switch between Login and Register tabs
+    // ============================================================
+    function switchAuthTab(tab) {
+      document.getElementById('form-login').style.display    = tab==='login'    ? 'flex' : 'none';
+      document.getElementById('form-register').style.display = tab==='register' ? 'flex' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab==='login');
+      document.getElementById('tab-register').classList.toggle('active', tab==='register');
+    }
+
+    function clearAuthError(id) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    }
+
+    // ============================================================
+    //  AUTH — PASSWORD STRENGTH CHECKER
+    //
+    //  Gives feedback as the player types their password.
+    //  Strength is scored 0-4 based on length and character types.
+    // ============================================================
+    function checkPasswordStrength() {
+      const pw    = document.getElementById('reg-password').value;
+      const fill  = document.getElementById('strength-fill');
+      const label = document.getElementById('strength-label');
+
+      let score = 0;
+      if (pw.length >= 6)               score++;   // minimum length
+      if (pw.length >= 10)              score++;   // longer is better
+      if (/[A-Z]/.test(pw))            score++;   // has uppercase
+      if (/[0-9!@#$%^&*]/.test(pw))   score++;   // has number or symbol
+
+      // Map score 0-4 to colour and label
+      const levels = [
+        { w:'0%',   color:'transparent',  text:'' },
+        { w:'30%',  color:var_red,        text:'Weak' },
+        { w:'55%',  color:'#e67e22',      text:'Fair' },
+        { w:'80%',  color:'#f1c40f',      text:'Good' },
+        { w:'100%', color:var_green,      text:'Strong' }
+      ];
+
+      fill.style.width      = levels[score].w;
+      fill.style.background = levels[score].color;
+      label.textContent     = levels[score].text;
+    }
+
+    // CSS variable colours as JS strings (used in checkPasswordStrength)
+    const var_red   = '#c0392b';
+    const var_green = '#27ae60';
+
+    // ============================================================
+    //  REGISTER — validate and create a new player account
+    // ============================================================
+    function doRegister() {
+      // Read form values and trim whitespace
+      const fullName  = document.getElementById('reg-name').value.trim();
+      const username  = document.getElementById('reg-username').value.trim().toLowerCase();
+      const password  = document.getElementById('reg-password').value;
+      const confirm   = document.getElementById('reg-confirm').value;
+
+      // --- Validation ---
+      let valid = true;
+
+      if (!fullName) {
+        document.getElementById('reg-err-name').textContent = 'Full name is required.';
+        valid = false;
+      }
+
+      if (!username || username.includes(' ')) {
+        document.getElementById('reg-err-user').textContent = 'Username required (no spaces).';
+        valid = false;
+      }
+
+      // Check username not already taken
+      const users = getAllUsers();
+      if (users[username]) {
+        document.getElementById('reg-err-user').textContent = 'Username already taken. Choose another.';
+        valid = false;
+      }
+
+      if (password.length < 6) {
+        document.getElementById('reg-err-pw').textContent = 'Password must be at least 6 characters.';
+        valid = false;
+      }
+
+      if (password !== confirm) {
+        document.getElementById('reg-err-confirm').textContent = 'Passwords do not match.';
+        valid = false;
+      }
+
+      if (!valid) return;   // stop if any validation failed
+
+      // --- Create the new user object ---
+      const newUser = {
+        fullName:   fullName,
+        username:   username,
+        password:   password,          // plain text — fine for school project
+        joinedDate: new Date().toLocaleDateString(),
+        stats:      freshStats()       // start with empty stats
+      };
+
+      // Save to localStorage
+      users[username] = newUser;
+      saveAllUsers(users);
+
+      showToast("✅ Account created! You can now log in.");
+      switchAuthTab('login');
+
+      // Pre-fill the login username field for convenience
+      document.getElementById('login-username').value = username;
+    }
+
+    // ============================================================
+    //  LOGIN — verify credentials and enter the app
+    // ============================================================
+    function doLogin() {
+      const username = document.getElementById('login-username').value.trim().toLowerCase();
+      const password = document.getElementById('login-password').value;
+
+      const users = getAllUsers();
+
+      // Check if user exists
+      if (!users[username]) {
+        document.getElementById('login-err').textContent = 'Username not found.';
+        return;
+      }
+
+      // Check password
+      if (users[username].password !== password) {
+        document.getElementById('login-err-pw').textContent = 'Incorrect password.';
+        return;
+      }
+
+      // --- Login successful ---
+      currentUser = users[username];
+      stats       = currentUser.stats;
+
+      // Save session so refreshing the page keeps you logged in
+      localStorage.setItem(SESSION_KEY, username);
+
+      // Show the main app
+      enterApp();
+    }
+
+    // ============================================================
+    //  LOGOUT — save stats, clear session, show auth screen
+    // ============================================================
+    function doLogout() {
+      if (!confirm("Log out of your account?")) return;
+
+      // Save current stats before leaving
+      persistCurrentUserStats();
+
+      // Clear session
+      localStorage.removeItem(SESSION_KEY);
+      currentUser = null;
+      stats       = null;
+
+      // Hide app, show auth
+      document.getElementById('app-screen').classList.remove('visible');
+      document.getElementById('auth-screen').style.display = 'flex';
+
+      // Clear login form password for security
+      document.getElementById('login-password').value = '';
+      showToast("👋 Logged out successfully.");
+    }
+
+    // ============================================================
+    //  ENTER APP — set up UI after login
+    // ============================================================
+    function enterApp() {
+      // Hide auth screen, show app
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-screen').classList.add('visible');
+
+      // Fill nav player strip
+      const initial = currentUser.fullName.charAt(0).toUpperCase();
+      document.getElementById('nav-avatar').textContent   = initial;
+      document.getElementById('nav-username').textContent = currentUser.username;
+      document.getElementById('nav-fullname').textContent = currentUser.fullName;
+
+      // Fill dashboard profile
+      document.getElementById('dash-avatar').textContent   = initial;
+      document.getElementById('dash-username').textContent = currentUser.username;
+      document.getElementById('dash-fullname').textContent = currentUser.fullName;
+      document.getElementById('dash-joined').textContent   = "Joined: " + currentUser.joinedDate;
+
+      // Start a fresh game
+      showPage('game');
+      startGame();
+    }
+
+    // ============================================================
+    //  PERSIST — write current player's stats back to localStorage
+    // ============================================================
+    function persistCurrentUserStats() {
+      if (!currentUser) return;
+      const users = getAllUsers();
+      users[currentUser.username].stats = stats;
+      saveAllUsers(users);
+    }
+
+    // ============================================================
+    //  PAGE SWITCHING
+    // ============================================================
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      const btns = document.querySelectorAll('.nav-btn');
+      if (name === 'game') btns[0].classList.add('active');
+      else                  btns[1].classList.add('active');
+      if (name === 'dash') renderDashboard();
+    }
+
+    // ============================================================
+    //  GAME — start new round
+    // ============================================================
+    function startGame() {
+      currentEntry   = wordBank[Math.floor(Math.random() * wordBank.length)];
+      secretWord     = currentEntry.word;
+      guessedLetters = [];
+      wrongGuesses   = 0;
+      hintUsed       = false;
+
+      document.getElementById('hint-display').textContent = "Press the hint button to get a clue →";
+      document.getElementById('hint-btn').disabled = false;
+
+      bodyParts.forEach(id => {
+        document.getElementById(id).style.opacity = "0";
+      });
+
+      const banner = document.getElementById('banner');
+      banner.textContent = "";
+      banner.className   = "";
+
+      renderWord();
+      renderKeyboard();
+      updateStatus();
+    }
+
+    // ============================================================
+    //  GAME — hint button
+    // ============================================================
+    function useHint() {
+      if (hintUsed) return;
+      hintUsed = true;
+      document.getElementById('hint-display').textContent = currentEntry.hint;
+      document.getElementById('hint-btn').disabled = true;
+    }
+
+    // ============================================================
+    //  GAME — render word blanks
+    // ============================================================
+    function renderWord() {
+      const display = document.getElementById('word-display');
+      display.innerHTML = "";
+      for (const letter of secretWord) {
+        const box = document.createElement('div');
+        box.className = 'letter-box';
+        if (guessedLetters.includes(letter)) box.textContent = letter.toUpperCase();
+        display.appendChild(box);
+      }
+    }
+
+    // ============================================================
+    //  GAME — render keyboard
+    // ============================================================
+    function renderKeyboard() {
+      const kb = document.getElementById('keyboard');
+      kb.innerHTML = "";
+      for (let i = 65; i <= 90; i++) {
+        const letter = String.fromCharCode(i).toLowerCase();
+        const btn    = document.createElement('button');
+        btn.className   = 'key';
+        btn.textContent = letter.toUpperCase();
+        btn.onclick     = () => handleGuess(letter);
+        if (guessedLetters.includes(letter)) {
+          btn.disabled = true;
+          btn.classList.add(secretWord.includes(letter) ? 'correct' : 'wrong');
+        }
+        kb.appendChild(btn);
+      }
+    }
+
+    // ============================================================
+    //  GAME — handle a letter click
+    // ============================================================
+    function handleGuess(letter) {
+      if (guessedLetters.includes(letter)) return;
+      guessedLetters.push(letter);
+      if (!secretWord.includes(letter)) {
+        wrongGuesses++;
+        const part = document.getElementById(bodyParts[wrongGuesses - 1]);
+        if (part) part.style.opacity = "1";
+      }
+      renderWord();
+      renderKeyboard();
+      checkGameOver();
+      updateStatus();
+    }
+
+    // ============================================================
+    //  GAME — check win or lose
+    // ============================================================
+    function checkGameOver() {
+      const banner = document.getElementById('banner');
+      const won    = [...secretWord].every(l => guessedLetters.includes(l));
+
+      if (won) {
+        banner.textContent = "🎉 YOU WIN!";
+        banner.className   = "win";
+        disableKeyboard();
+        recordResult('win');
+      } else if (wrongGuesses >= MAX_WRONG) {
+        banner.textContent = "💀 GAME OVER — " + secretWord.toUpperCase();
+        banner.className   = "lose";
+        disableKeyboard();
+        recordResult('lose');
+      }
+    }
+
+    // ============================================================
+    //  GAME — record result into player stats & auto-save
+    // ============================================================
+    function recordResult(result) {
+      stats.played++;
+
+      if (result === 'win') {
+        stats.wins++;
+        stats.streak++;
+        // Update best streak if current streak is higher
+        if (stats.streak > stats.bestStreak) stats.bestStreak = stats.streak;
+      } else {
+        stats.losses++;
+        stats.streak = 0;   // reset streak on a loss
+      }
+
+      // Add game entry to history (newest first)
+      stats.history.unshift({
+        word:      secretWord,
+        result:    result,
+        wrong:     wrongGuesses,
+        hintUsed:  hintUsed,
+        timestamp: new Date().toLocaleString()
+      });
+
+      // Keep only last 10 games
+      if (stats.history.length > 10) stats.history.pop();
+
+      // Auto-save to localStorage
+      persistCurrentUserStats();
+      showToast("✅ Game saved for " + currentUser.username + "!");
+    }
+
+    function disableKeyboard() {
+      document.querySelectorAll('.key').forEach(btn => btn.disabled = true);
+    }
+
+    function updateStatus() {
+      const remaining = MAX_WRONG - wrongGuesses;
+      document.getElementById('wrong-count').textContent = "Wrong: " + wrongGuesses + " / " + MAX_WRONG;
+      const status = document.getElementById('status');
+      if (wrongGuesses === 0)   status.textContent = "Guess the month! Use the hint button if you're stuck.";
+      else if (remaining === 1) status.textContent = "⚠️ Last chance! One wrong guess remaining!";
+      else                      status.textContent = remaining + " wrong guesses remaining.";
+    }
+
+    // ============================================================
+    //  DASHBOARD — render all stats for current player
+    // ============================================================
+    function renderDashboard() {
+      const { played, wins, losses, streak, bestStreak, history } = stats;
+      const winRate = played === 0 ? 0 : Math.round((wins / played) * 100);
+
+      document.getElementById('d-played').textContent  = played;
+      document.getElementById('d-wins').textContent    = wins;
+      document.getElementById('d-losses').textContent  = losses;
+      document.getElementById('d-winrate').textContent = winRate + "%";
+      document.getElementById('d-bar').style.width     = winRate + "%";
+      document.getElementById('d-barpct').textContent  = winRate + "%";
+      document.getElementById('dash-streak').textContent = streak;
+
+      // Show data in textarea
+      document.getElementById('data-textarea').value = JSON.stringify(stats, null, 2);
+
+      const histDiv = document.getElementById('history-body');
+      if (!history || history.length === 0) {
+        histDiv.innerHTML = '<p class="empty-dash">No games yet. Go play! 🎮</p>';
+        return;
+      }
+
+      let html = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>MONTH</th><th>WRONG</th><th>HINT</th><th>DATE</th><th>RESULT</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const g of history) {
+        const name = g.word.charAt(0).toUpperCase() + g.word.slice(1);
+        html += `
+          <tr>
+            <td>${name}</td>
+            <td>${g.wrong}/6</td>
+            <td>${g.hintUsed ? "💡 Yes" : "— No"}</td>
+            <td style="font-size:0.7rem;color:var(--muted)">${g.timestamp||"—"}</td>
+            <td><span class="badge ${g.result}">${g.result.toUpperCase()}</span></td>
+          </tr>
+        `;
+      }
+
+      html += `</tbody></table>`;
+      histDiv.innerHTML = html;
+    }
+
+    // ============================================================
+    //  DATA PANEL — Save, Export, Load, Reset
+    // ============================================================
+
+    function saveData() {
+      persistCurrentUserStats();
+      document.getElementById('data-textarea').value = JSON.stringify(stats, null, 2);
+      showToast("💾 Saved!");
+    }
+
+    function exportData() {
+      const now     = new Date().toLocaleString();
+      const winRate = stats.played===0 ? 0 : Math.round(stats.wins/stats.played*100);
+
+      let content =
+        "============================================================\n" +
+        "  HANGMAN GAME — Player Data Export\n" +
+        "  Player   : " + currentUser.fullName + " (@" + currentUser.username + ")\n" +
+        "  Exported : " + now + "\n" +
+        "============================================================\n\n" +
+        "STATS:\n" +
+        "  Games Played : " + stats.played     + "\n" +
+        "  Wins         : " + stats.wins        + "\n" +
+        "  Losses       : " + stats.losses      + "\n" +
+        "  Win Rate     : " + winRate           + "%\n" +
+        "  Win Streak   : " + stats.streak      + "\n" +
+        "  Best Streak  : " + stats.bestStreak  + "\n\n" +
+        "============================================================\n" +
+        "  JSON DATA (paste into Load box to restore):\n" +
+        "============================================================\n\n" +
+        JSON.stringify(stats, null, 2) + "\n\n" +
+        "============================================================\n" +
+        "  GAME LOG:\n" +
+        "============================================================\n\n";
+
+      if (stats.history.length === 0) {
+        content += "  No games recorded.\n";
+      } else {
+        stats.history.forEach((g, i) => {
+          const m = g.word.charAt(0).toUpperCase() + g.word.slice(1);
+          content += "  " + (i+1) + ". " + m.padEnd(12)
+                   + " | " + g.result.toUpperCase()
+                   + " | Wrong: " + g.wrong + "/6"
+                   + " | Hint: " + (g.hintUsed?"Yes":"No")
+                   + " | " + (g.timestamp||"—") + "\n";
+        });
+      }
+
+      content += "\n============================================================\n";
+
+      const blob = new Blob([content], { type:'text/plain' });
+      const link = document.createElement('a');
+      link.href     = URL.createObjectURL(blob);
+      link.download = 'game_data_' + currentUser.username + '.txt';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast("📥 Exported game_data_" + currentUser.username + ".txt");
+    }
+
+    function loadData() {
+      const text = document.getElementById('data-textarea').value.trim();
+      if (!text) { showToast("⚠️ Paste your saved JSON first!"); return; }
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed.played === 'undefined') { showToast("❌ Invalid format!"); return; }
+        stats = parsed;
+        persistCurrentUserStats();
+        renderDashboard();
+        showToast("📂 Data loaded!");
+      } catch(e) {
+        showToast("❌ Could not read data — check the format.");
+      }
+    }
+
+    function resetStats() {
+      if (!confirm("Reset all stats for " + currentUser.username + "? Cannot be undone.")) return;
+      stats = freshStats();
+      persistCurrentUserStats();
+      document.getElementById('data-textarea').value = "";
+      renderDashboard();
+      showToast("🗑 Stats reset.");
+    }
+
+    // ============================================================
+    //  TOAST NOTIFICATION
+    // ============================================================
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // ============================================================
+    //  ON PAGE LOAD — check if a session exists (auto-login)
+    //
+    //  If the player closed the browser without logging out,
+    //  their session is still in localStorage. We reload it
+    //  automatically so they don't have to log in again.
+    // ============================================================
+    (function checkSession() {
+      const savedUsername = localStorage.getItem(SESSION_KEY);
+      if (savedUsername) {
+        const users = getAllUsers();
+        if (users[savedUsername]) {
+          currentUser = users[savedUsername];
+          stats       = currentUser.stats;
+          enterApp();   // skip login screen
+          return;
+        }
+      }
+      // No valid session — show auth screen normally
+      document.getElementById('auth-screen').style.display = 'flex';
+    })();
+
+  </script>
+</body>
+</html>
