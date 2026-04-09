@@ -646,3 +646,4 @@ Some browsers (especially Chrome) block localStorage when opening HTML files dir
 from disk ( file:// URLs). Always use the start_server.bat or python -m http.server to
 avoid this.
 Documentation generated for Hangman — Months Edition · First Year Students · April 2026
+Author:- Yogesh kumar saini 
